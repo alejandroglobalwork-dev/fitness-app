@@ -43,12 +43,12 @@ h1 { font: 700 clamp(1.7rem, 5.4vw, 2.5rem)/1.05 var(--font-display); letter-spa
 .layout > * { min-width: 0; }
 
 /* panel de alimentos */
-.panel { background: var(--surface); border-radius: 22px; padding: 20px; box-shadow: var(--shadow); }
+.panel { background: var(--surface); border-radius: 22px; padding: 20px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 22px; }
+.block[hidden] { display: none; }
 @media (max-width: 420px) { .panel { padding: 14px; border-radius: 18px; } }
 .eyebrow { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin: 0 0 10px;
   font: 700 12px/1.2 var(--font-body); letter-spacing: .09em; text-transform: uppercase; color: var(--muted); }
 .eyebrow .count { letter-spacing: 0; text-transform: none; font-weight: 500; font-size: 13px; font-variant-numeric: tabular-nums; }
-.block + .block { margin-top: 22px; }
 .help { font-size: 14px; color: var(--muted); margin: 0 0 12px; }
 
 .tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
@@ -108,11 +108,11 @@ input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .toggle { display: flex; align-items: center; gap: 10px; margin-top: 14px; font-size: 14px; color: var(--ink); cursor: pointer; }
 .toggle input { width: 18px; height: 18px; flex: none; accent-color: var(--accent); margin: 0; }
 
-.go { width: 100%; margin-top: 20px; padding: 14px 18px; border-radius: 14px; border: 0; background: var(--accent); color: var(--accent-ink);
+.go { width: 100%; margin-top: 0; padding: 14px 18px; border-radius: 14px; border: 0; background: var(--accent); color: var(--accent-ink);
   font: 700 16px/1.2 var(--font-display); cursor: pointer; box-shadow: 0 10px 20px -12px var(--accent-deep); transition: transform .15s, background .15s; }
 .go:hover:not(:disabled) { background: var(--accent-deep); transform: translateY(-1px); }
 .go:disabled { background: color-mix(in srgb, var(--accent) 35%, var(--surface)); box-shadow: none; cursor: not-allowed; }
-.note { margin: 8px 0 0; font-size: 13px; color: var(--muted); text-align: center; min-height: 1.3em; }
+.note { margin: -14px 0 0; font-size: 13px; color: var(--muted); text-align: center; min-height: 1.3em; }
 
 /* resultados */
 .results h2 { font: 700 1.35rem/1.2 var(--font-display); margin: 0 0 14px; }
@@ -124,7 +124,7 @@ input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .empty p { margin: 0; max-width: 34ch; }
 .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr)); gap: 16px; }
 .card { background: var(--surface); border-radius: 20px; overflow: hidden; box-shadow: var(--shadow); display: flex; flex-direction: column; min-width: 0; }
-.art { aspect-ratio: 4 / 3; background: var(--bg); }
+.art { position: relative; aspect-ratio: 4 / 3; background: var(--bg); }
 .art svg { display: block; width: 100%; height: 100%; }
 .body { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
 .mins { align-self: flex-start; font-size: 12px; font-weight: 700; letter-spacing: .02em; padding: 3px 10px; border-radius: 999px; background: color-mix(in srgb, var(--accent) 14%, var(--surface)); color: var(--accent-deep); }
@@ -178,6 +178,23 @@ ul.ing li { margin: 2px 0; }
 #copyfb { margin-top: 12px; font-size: 13px; color: var(--muted); }
 #copyfb textarea { width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; font: inherit; background: var(--surface); color: var(--ink); }
 .sk.shop i { display: block; margin-bottom: 10px; }
+.views { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding: 4px; margin-bottom: 20px; border-radius: 18px; background: var(--surface); box-shadow: var(--shadow); max-width: 460px; }
+.vtab { display: flex; align-items: center; justify-content: center; gap: 6px; min-width: 0; padding: 11px 4px; border: 0; border-radius: 14px; background: transparent; color: var(--muted); font: 700 clamp(12.5px, 3.7vw, 15px)/1.2 var(--font-display); white-space: nowrap; cursor: pointer; }
+.vtab[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.vtab .vn { font: 700 11px/1 var(--font-body); padding: 3px 7px; border-radius: 999px; background: color-mix(in srgb, currentColor 20%, transparent); }
+.vtab .vn:empty { display: none; }
+.layout.single { grid-template-columns: minmax(0, 1fr); }
+.layout.single .panel { display: none; }
+.save { position: absolute; top: 10px; right: 10px; width: 40px; height: 40px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 50%; background: rgba(255, 255, 255, .92); color: var(--ink); cursor: pointer; box-shadow: 0 2px 8px rgba(15, 47, 44, .25); }
+.save svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.save[aria-pressed="true"] { background: var(--accent); color: #fff; }
+.save[aria-pressed="true"] svg { fill: currentColor; }
+.cards + h2 { margin-top: 28px; }
+.pchips { margin-top: 12px; }
+.pchip { display: inline-flex; align-items: center; gap: 4px; max-width: 100%; padding: 3px 3px 3px 13px; border-radius: 999px; background: color-mix(in srgb, var(--accent) 14%, var(--surface)); font-size: 14px; line-height: 1.3; }
+.pchip > span { min-width: 0; overflow-wrap: anywhere; }
+.pdel { flex: none; width: 26px; height: 26px; padding: 0; border: 0; border-radius: 50%; background: var(--surface); color: var(--ink); font: 700 12px/1 var(--font-body); cursor: pointer; }
+.pactions { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 12px; }
 .sk .art, .sk i { background: linear-gradient(100deg, var(--line) 30%, #e6f3f0 50%, var(--line) 70%); background-size: 200% 100%; animation: sh 1.3s linear infinite; }
 .sk i { display: block; height: 12px; border-radius: 6px; }
 @keyframes sh { to { background-position: -200% 0; } }
@@ -198,9 +215,15 @@ ul.ing li { margin: 2px 0; }
     </div>
   </header>
 
+  <nav class="views" id="views" aria-label="Secciones">
+    <button type="button" class="vtab" data-v="ideas" aria-pressed="true">Ideas</button>
+    <button type="button" class="vtab" data-v="home" aria-pressed="false">En casa</button>
+    <button type="button" class="vtab" data-v="saved" aria-pressed="false">Guardados <span class="vn" id="favn"></span></button>
+  </nav>
+
   <div class="layout">
     <section class="panel" aria-label="Tus alimentos y ajustes">
-      <div class="block">
+      <div class="block" id="blk-foods">
         <div class="eyebrow"><span>Mis alimentos</span><span class="count" id="count"></span></div>
         <p class="help">Abre un grupo y marca los que te gustan. Si falta alguno, escríbelo abajo y Claude lo clasifica por ti. Con «Nuevas ideas» cambias los que no has marcado.</p>
         <form class="add smart" id="smart">
@@ -209,6 +232,18 @@ ul.ing li { margin: 2px 0; }
         </form>
         <p class="smartfb" id="smartfb" role="status" aria-live="polite"></p>
         <div id="groups"></div>
+      </div>
+
+      <div class="block" id="blk-home" hidden>
+        <div class="eyebrow"><span>Lo que tengo en casa</span><span class="count" id="pcount"></span></div>
+        <p class="help">Apunta lo que ya tienes comprado y Claude te propone platos con eso.</p>
+        <form class="add smart" id="pform">
+          <input type="text" id="pin" autocomplete="off" placeholder="Ej. huevos, arroz, calabacín" aria-label="Añadir un alimento que tengo en casa">
+          <button type="submit">Añadir</button>
+        </form>
+        <div class="chips pchips" id="pchips"></div>
+        <div class="pactions"><button type="button" class="link" id="p-import">Traer mis alimentos marcados</button><button type="button" class="link" id="p-clear">Vaciar</button></div>
+        <p class="smartfb" id="pfb" role="status" aria-live="polite"></p>
       </div>
 
       <div class="block">
@@ -284,7 +319,8 @@ window.claude = { use: async function (name) {
   var $ = function (id) { return document.getElementById(id); };
   var groupsEl = $("groups"), out = $("out"), statusEl = $("status"), goBtn = $("b-dishes");
   var state = { selected: {}, custom: {}, hidden: {}, open: "carbs", editing: false, refreshing: null, seen: {} };
-  var lastTitles = [], busy = false;
+  var busy = false, view = "ideas";
+  var results = { ideas: {}, home: {} }, pantry = [], picked = {}, favs = {};
 
   function esc(s) {
     return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
@@ -303,23 +339,31 @@ window.claude = { use: async function (name) {
     try {
       localStorage.setItem(KEY, JSON.stringify({
         selected: state.selected, custom: state.custom, hidden: state.hidden, seen: state.seen,
-        people: $("people").value, notes: $("notes").value, ptype: ptype(), level: level(), onlyhave: $("onlyhave").checked
+        people: $("people").value, notes: $("notes").value, ptype: ptype(), level: level(), onlyhave: $("onlyhave").checked,
+        results: results, pantry: pantry, picked: picked, favs: favs, view: view
       }));
     } catch (e) {}
   }
   CATALOG.forEach(function (g) { state.selected[g.id] = []; state.custom[g.id] = []; state.hidden[g.id] = []; state.seen[g.id] = []; });
-  var saved = load();
-  if (saved) {
+  var stored = load();
+  if (stored) {
     CATALOG.forEach(function (g) {
-      state.selected[g.id] = (saved.selected && saved.selected[g.id]) || [];
-      state.custom[g.id] = (saved.custom && saved.custom[g.id]) || [];
-      state.hidden[g.id] = (saved.hidden && saved.hidden[g.id]) || [];
-      state.seen[g.id] = (saved.seen && saved.seen[g.id]) || [];
+      state.selected[g.id] = (stored.selected && stored.selected[g.id]) || [];
+      state.custom[g.id] = (stored.custom && stored.custom[g.id]) || [];
+      state.hidden[g.id] = (stored.hidden && stored.hidden[g.id]) || [];
+      state.seen[g.id] = (stored.seen && stored.seen[g.id]) || [];
     });
-    $("people").value = saved.people || 1; $("notes").value = saved.notes || "";
-    if (saved.ptype && $("t-" + saved.ptype)) $("t-" + saved.ptype).checked = true;
-    $("onlyhave").checked = !!saved.onlyhave;
-    if (saved.level && $("l-" + saved.level)) $("l-" + saved.level).checked = true;
+    $("people").value = stored.people || 1; $("notes").value = stored.notes || "";
+    if (stored.ptype && $("t-" + stored.ptype)) $("t-" + stored.ptype).checked = true;
+    $("onlyhave").checked = !!stored.onlyhave;
+    if (stored.level && $("l-" + stored.level)) $("l-" + stored.level).checked = true;
+  }
+
+  if (stored) {
+    ["ideas", "home"].forEach(function (v) { results[v] = (stored.results && stored.results[v]) || {}; });
+    pantry = Array.isArray(stored.pantry) ? stored.pantry : [];
+    picked = stored.picked || {}; favs = stored.favs || {};
+    if (["ideas", "home", "saved"].indexOf(stored.view) > -1) view = stored.view;
   }
 
   function total() { return CATALOG.reduce(function (n, g) { return n + state.selected[g.id].length; }, 0); }
@@ -330,8 +374,10 @@ window.claude = { use: async function (name) {
       var el = $("n-" + g.id);
       if (el) el.textContent = state.selected[g.id].length + (state.selected[g.id].length === 1 ? " marcado" : " marcados");
     });
-    goBtn.disabled = !n || busy;
-    $("note").textContent = n ? "" : "Marca al menos un alimento para empezar.";
+    $("pcount").textContent = pantry.length + (pantry.length === 1 ? " alimento" : " alimentos");
+    var need = view === "home" ? pantry.length : n;
+    goBtn.disabled = !need || busy;
+    $("note").textContent = need ? "" : (view === "home" ? "Añade al menos un alimento que tengas en casa." : "Marca al menos un alimento para empezar.");
   }
   function cat(id) { return CATALOG.filter(function (c) { return c.id === id; })[0]; }
   function visible(g) {
@@ -501,8 +547,8 @@ window.claude = { use: async function (name) {
     }
   });
   ["people", "notes", "onlyhave"].forEach(function (id) { $(id).addEventListener("input", save); });
-  $("types").addEventListener("change", function () { lastTitles = []; save(); });
-  $("levels").addEventListener("change", function () { lastTitles = []; save(); });
+  $("types").addEventListener("change", function () { save(); drawResults(); });
+  $("levels").addEventListener("change", save);
   drawGroups();
 
   /* ---------- ilustraciones de plato ---------- */
@@ -585,29 +631,50 @@ window.claude = { use: async function (name) {
 
   /* ---------- generación ---------- */
   var SCHEMA = '{"dishes":[{"title":"...","description":"una frase","technique":"Guiso","vessel":"bowl|plate|glass|toast|soup","colors":["#e6c58f","#f2d45c","#d9534f"],"mainIngredients":["..."],"extraIngredients":["..."],"minutes":20,"ingredients":["200 g de calabacín","1 patata"],"steps":["paso corto","..."]}]}';
+  var TYPES = ["desayuno", "comida", "cena", "postre"];
   function num(id, max) { return Math.min(max, Math.max(1, parseInt($(id).value, 10) || 1)); }
+  function cap(x) { return x.charAt(0).toUpperCase() + x.slice(1); }
+  function dkey(d) { return String(d.title).toLowerCase(); }
+  function listFor(v, t) { return (results[v] && results[v][t]) || []; }
   function ingredientsText() {
     return CATALOG.filter(function (g) { return state.selected[g.id].length; }).map(function (g) {
       return g.title + ":\n" + state.selected[g.id].map(function (i) { return "- " + i; }).join("\n");
     }).join("\n\n");
   }
-  function task() {
-    return "Propón 6 variantes distintas de " + TYPE_LABEL[ptype()] + " (solo platos de ese tipo) para " + num("people", 10) + " persona(s), variadas y basadas en estos alimentos. " +
-      ($("onlyhave").checked ? "Usa SOLO los alimentos marcados más básicos de despensa (sal, pimienta, especias, agua); extraIngredients debe ser []. " : "Indica en extraIngredients lo que habría que comprar además (pocas cosas). ") +
-      LEVEL_TEXT[level()] + "technique = técnica principal en una o dos palabras (Plancha, Guiso, Puré, Crema, Sopa, Horno, Vapor, Salteado, Papillote, Cocción lenta, Frío...). Para la ilustración: vessel = bowl (bol, yogur, ensaladas), plate (plato con proteína, guarnición y verdura), glass (vasos, batidos, postres en capas), toast (tostadas y sándwiches) o soup (cremas, purés, sopas, guisos y legumbres con caldo); colors = 3 o 4 colores hex (#rrggbb) de los ingredientes visibles del plato. ingredients = lista con cantidades para " + num("people", 10) + " persona(s) (ej. '200 g de calabacín'). steps = de 3 a 5 pasos cortos para los platos rápidos y de 5 a 7 para los elaborados (máx. 120 caracteres cada uno), con tiempos y puntos de cocción." +
-      (lastTitles.length ? " Ya te propuse estos, no los repitas ni propongas versiones casi iguales: " + lastTitles.join("; ") + "." : "");
+  function foodsBlock(v) {
+    if (v === "home") return "Alimentos que tengo EN CASA, ya comprados:\n" + pantry.map(function (i) { return "- " + i; }).join("\n");
+    return "Alimentos que me gustan y forman parte de mi dieta, por macronutriente:\n" + ingredientsText();
   }
-  var shown = [], picked = {};
-  function card(d, idx) {
+  function task(v, t) {
+    var titles = listFor(v, t).map(function (d) { return d.title; }).slice(-30);
+    var base = v === "home"
+      ? "Propón 6 variantes distintas de " + TYPE_LABEL[t] + " (solo platos de ese tipo) para " + num("people", 10) + " persona(s), cocinables sobre todo con los alimentos que tengo en casa más básicos de despensa (sal, pimienta, especias, aceite, agua). " +
+        ($("onlyhave").checked ? "Usa SOLO lo que tengo; extraIngredients debe ser []. " : "Si falta algo, indícalo en extraIngredients (máximo 2 cosas por plato). ")
+      : "Propón 6 variantes distintas de " + TYPE_LABEL[t] + " (solo platos de ese tipo) para " + num("people", 10) + " persona(s), variadas y basadas en estos alimentos. " +
+        ($("onlyhave").checked ? "Usa SOLO los alimentos marcados más básicos de despensa (sal, pimienta, especias, agua); extraIngredients debe ser []. " : "Indica en extraIngredients lo que habría que comprar además (pocas cosas). ");
+    return base + LEVEL_TEXT[level()] + "technique = técnica principal en una o dos palabras (Plancha, Guiso, Puré, Crema, Sopa, Horno, Vapor, Salteado, Papillote, Cocción lenta, Frío...). Para la ilustración: vessel = bowl (bol, yogur, ensaladas), plate (plato con proteína, guarnición y verdura), glass (vasos, batidos, postres en capas), toast (tostadas y sándwiches) o soup (cremas, purés, sopas, guisos y legumbres con caldo); colors = 3 o 4 colores hex (#rrggbb) de los ingredientes visibles del plato. ingredients = lista con cantidades para " + num("people", 10) + " persona(s) (ej. '200 g de calabacín'). steps = de 3 a 5 pasos cortos para los platos rápidos y de 5 a 7 para los elaborados (máx. 120 caracteres cada uno), con tiempos y puntos de cocción." +
+      (titles.length ? " Ya te propuse estos, no los repitas ni propongas versiones casi iguales: " + titles.join("; ") + "." : "");
+  }
+  function buildPrompt(v, t) {
+    return "Eres un nutricionista y cocinero práctico. Responde en español y SOLO con JSON válido, sin texto extra ni markdown.\n\n" +
+      foodsBlock(v) + "\n\nNotas y restricciones: " + ($("notes").value.trim() || "ninguna") +
+      "\n\nTarea: " + task(v, t) + "\n\nFormato JSON exacto:\n" + SCHEMA;
+  }
+
+  var registry = {};
+  var BOOKMARK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4z"/></svg>';
+  function card(d) {
+    var k = dkey(d); registry[k] = d;
     var main = (d.mainIngredients || []).map(function (x) { return "<span>" + esc(x) + "</span>"; }).join("");
     var extra = (d.extraIngredients || []).length ? "<p class='buy'><b>Comprar:</b> " + esc(d.extraIngredients.join(", ")) + "</p>" : "";
     var ing = (d.ingredients || []).map(function (x) { return "<li>" + esc(x) + "</li>"; }).join("");
     var steps = (d.steps || []).map(function (x) { return "<li><span>" + esc(x) + "</span></li>"; }).join("");
-    var on = !!picked[d.title];
-    return "<article class='card'><div class='art'>" + art(d, d._t || ptype()) + "</div><div class='body'>" +
+    var on = !!picked[k], fav = !!favs[k];
+    return "<article class='card'><div class='art'>" + art(d, d._t || ptype()) +
+      "<button type='button' class='save' data-k='" + esc(k) + "' aria-pressed='" + fav + "' aria-label='" + (fav ? "Quitar de guardados" : "Guardar plato") + "'>" + BOOKMARK + "</button></div><div class='body'>" +
       "<div class='meta'><span class='mins'>" + esc(d.minutes) + " min</span>" + (d.technique ? "<span class='tech'>" + esc(d.technique) + "</span>" : "") + "</div><h3>" + esc(d.title) + "</h3><p>" + esc(d.description) + "</p>" +
       (main ? "<div class='tags'>" + main + "</div>" : "") + extra +
-      "<button type='button' class='pick' data-i='" + idx + "' aria-pressed='" + on + "'>" + (on ? "✓ En la compra" : "+ A la compra") + "</button>" +
+      "<button type='button' class='pick' data-k='" + esc(k) + "' aria-pressed='" + on + "'>" + (on ? "✓ En la compra" : "+ A la compra") + "</button>" +
       (steps || ing ? "<details><summary>Ver receta</summary>" + (ing ? "<p class='lbl'>Ingredientes</p><ul class='ing'>" + ing + "</ul>" : "") +
         (steps ? "<p class='lbl'>Preparación</p><ol class='steps'>" + steps + "</ol>" : "") + "</details>" : "") + "</div></article>";
   }
@@ -615,24 +682,81 @@ window.claude = { use: async function (name) {
     var one = "<div class='card sk'><div class='art'></div><div class='body'><i style='width:30%'></i><i style='width:80%;height:16px'></i><i></i><i style='width:60%'></i></div></div>";
     return "<div class='cards' aria-hidden='true'>" + one + one + one + one + one + one + "</div>";
   }
-  function emptyState() {
+  function emptyState(msg) {
     out.innerHTML = "<div class='empty'><svg viewBox='0 0 200 150' aria-hidden='true'><circle cx='100' cy='76' r='60' fill='#fff'/><circle cx='100' cy='76' r='46' fill='#cfe6e1'/>" +
       "<path d='M100 76 L100 30 A46 46 0 0 1 140 99 Z' fill='#ffcf5c'/><path d='M100 76 L140 99 A46 46 0 0 1 60 99 Z' fill='#ff9a85'/><path d='M100 76 L60 99 A46 46 0 0 1 100 30 Z' fill='#7fdc98'/><circle cx='100' cy='76' r='10' fill='#fff'/></svg>" +
-      "<p>Aquí aparecerán tus platos. Marca tus alimentos, elige el tipo de comida y pulsa <b>Ideas de platos</b>.</p></div>";
+      "<p>" + msg + "</p></div>";
   }
   function drawResults() {
-    out.innerHTML = "<h2>Ideas de " + TYPE_PLURAL[(shown[0] && shown[0]._t) || ptype()] + " <span>· " + shown.length + "</span></h2><div class='cards'>" + shown.map(card).join("") +
+    registry = {};
+    var t = ptype();
+    if (view === "saved") {
+      var all = Object.keys(favs).map(function (k) { return favs[k]; });
+      if (!all.length) { emptyState("Aún no has guardado ningún plato. Pulsa el marcador de una tarjeta para tenerlo aquí."); return; }
+      out.innerHTML = TYPES.map(function (ty) {
+        var list = all.filter(function (d) { return (d._t || "comida") === ty; });
+        return list.length ? "<h2>" + cap(TYPE_PLURAL[ty]) + " <span>· " + list.length + "</span></h2><div class='cards'>" + list.map(card).join("") + "</div>" : "";
+      }).join("");
+      return;
+    }
+    var list = listFor(view, t);
+    if (!list.length) {
+      emptyState(view === "home"
+        ? "Aquí aparecerán tus " + TYPE_PLURAL[t] + " con lo que tienes en casa. Apunta tus alimentos y pulsa <b>Platos con lo que tengo</b>."
+        : "Aquí aparecerán tus " + TYPE_PLURAL[t] + ". Marca tus alimentos y pulsa <b>Ideas de platos</b>.");
+      return;
+    }
+    out.innerHTML = "<h2>" + (view === "home" ? "En casa · " + TYPE_PLURAL[t] : "Ideas de " + TYPE_PLURAL[t]) + " <span>· " + list.length + "</span></h2><div class='cards'>" + list.map(card).join("") +
       "</div><button type='button' class='more' id='b-more'>Más variantes</button>";
     $("b-more").addEventListener("click", function () { run(true); });
   }
-  function render(data, more) {
-    if (!data.dishes || !data.dishes.length) { if (!more) out.innerHTML = "<p class='status'>No salió ningún plato. Prueba de nuevo.</p>"; return; }
-    var t = ptype();
-    data.dishes.forEach(function (d) { d._t = t; });
-    shown = more ? shown.concat(data.dishes) : data.dishes.slice();
-    lastTitles = lastTitles.concat(data.dishes.map(function (d) { return d.title; })).slice(-30);
-    drawResults();
+
+  /* ---------- secciones: ideas / en casa / guardados ---------- */
+  var layoutEl = document.querySelector(".layout");
+  function setView(v) {
+    view = v;
+    [].forEach.call($("views").querySelectorAll(".vtab"), function (b) { b.setAttribute("aria-pressed", String(b.dataset.v === v)); });
+    $("blk-foods").hidden = v !== "ideas"; $("blk-home").hidden = v !== "home";
+    layoutEl.classList.toggle("single", v === "saved");
+    goBtn.textContent = v === "home" ? "Platos con lo que tengo" : "Ideas de platos";
+    statusEl.className = "status"; statusEl.textContent = "";
+    refresh(); drawResults(); save();
   }
+  $("views").addEventListener("click", function (e) { var b = e.target.closest(".vtab"); if (b) setView(b.dataset.v); });
+  function updateFavCount() { $("favn").textContent = Object.keys(favs).length || ""; }
+
+  /* lo que tengo en casa */
+  function renderPantry() {
+    $("pchips").innerHTML = pantry.map(function (n, i) {
+      return "<span class='pchip'><span>" + esc(n) + "</span><button type='button' class='pdel' data-i='" + i + "' aria-label='Quitar " + esc(n) + "'>✕</button></span>";
+    }).join("");
+    refresh();
+  }
+  function addPantry(names) {
+    var added = 0;
+    names.forEach(function (n) {
+      n = String(n).trim(); if (!n) return;
+      n = cap(n);
+      if (pantry.some(function (p) { return foodKey(p) === foodKey(n); })) return;
+      pantry.push(n); added++;
+    });
+    if (added) { save(); renderPantry(); }
+    return added;
+  }
+  $("pform").addEventListener("submit", function (e) {
+    e.preventDefault();
+    addPantry($("pin").value.split(/[,\n]/)); $("pin").value = ""; $("pin").focus();
+  });
+  $("pchips").addEventListener("click", function (e) {
+    var b = e.target.closest(".pdel"); if (!b) return;
+    pantry.splice(+b.dataset.i, 1); save(); renderPantry();
+  });
+  $("p-import").addEventListener("click", function () {
+    var all = []; CATALOG.forEach(function (c) { all = all.concat(state.selected[c.id]); });
+    var n = addPantry(all);
+    $("pfb").textContent = n ? n + (n === 1 ? " alimento traído" : " alimentos traídos") + " desde tus marcados." : "No hay alimentos marcados nuevos que traer.";
+  });
+  $("p-clear").addEventListener("click", function () { pantry = []; save(); renderPantry(); $("pfb").textContent = ""; });
 
   /* ---------- lista de la compra ---------- */
   var shopEl = $("shop"), shopBtn = $("b-shop");
@@ -649,16 +773,26 @@ window.claude = { use: async function (name) {
       : "No se pudo crear la lista. Inténtalo de nuevo.";
   }
   out.addEventListener("click", function (e) {
-    var b = e.target.closest(".pick");
+    var b = e.target.closest(".pick, .save");
     if (!b) return;
-    var d = shown[+b.dataset.i];
+    var d = registry[b.dataset.k];
     if (!d) return;
-    if (picked[d.title]) delete picked[d.title]; else picked[d.title] = d;
-    var on = !!picked[d.title];
-    b.setAttribute("aria-pressed", on); b.textContent = on ? "✓ En la compra" : "+ A la compra";
-    updateCart();
+    var k = dkey(d);
+    if (b.classList.contains("pick")) {
+      if (picked[k]) delete picked[k]; else picked[k] = d;
+      var on = !!picked[k];
+      b.setAttribute("aria-pressed", String(on)); b.textContent = on ? "✓ En la compra" : "+ A la compra";
+      updateCart();
+    } else {
+      if (favs[k]) delete favs[k]; else favs[k] = d;
+      var fav = !!favs[k];
+      b.setAttribute("aria-pressed", String(fav)); b.setAttribute("aria-label", fav ? "Quitar de guardados" : "Guardar plato");
+      updateFavCount();
+      if (view === "saved") drawResults();
+    }
+    save();
   });
-  $("b-clear").addEventListener("click", function () { picked = {}; shopEl.innerHTML = ""; updateCart(); if (shown.length) drawResults(); });
+  $("b-clear").addEventListener("click", function () { picked = {}; shopEl.innerHTML = ""; updateCart(); save(); drawResults(); });
   function shopTextFromDom() {
     return [].map.call(shopEl.querySelectorAll(".shopcat"), function (c) {
       var items = [].filter.call(c.querySelectorAll("li"), function (li) { return !li.querySelector("input").checked; })
@@ -669,7 +803,7 @@ window.claude = { use: async function (name) {
   function renderShop(data) {
     var cats = (data && data.shopping || []).filter(function (c) { return c && c.items && c.items.length; });
     if (!cats.length) { shopEl.innerHTML = "<section class='shop'><p class='status error'>No salió ninguna lista. Inténtalo de nuevo.</p></section>"; return; }
-    var n = 0, titles = Object.keys(picked).join(", ");
+    var n = 0, titles = Object.keys(picked).map(function (k) { return picked[k].title; }).join(", ");
     var body = cats.map(function (c) {
       return "<div class='shopcat'><h3>" + esc(c.category) + "</h3><ul>" + c.items.map(function (i) {
         n++;
@@ -713,36 +847,38 @@ window.claude = { use: async function (name) {
   }
   shopBtn.addEventListener("click", runShop);
 
+  /* ---------- generar platos ---------- */
   async function run(more) {
+    if (view === "saved" || busy) return;
+    var v = view, t = ptype(), promptText = buildPrompt(v, t);
     busy = true; refresh();
     var oldMore = $("b-more"); if (oldMore) oldMore.disabled = true;
-    if (!more) { lastTitles = []; out.innerHTML = skeleton(); }
+    if (!more) out.innerHTML = skeleton();
     statusEl.className = "status"; statusEl.textContent = "Claude está cocinando ideas…";
     try { if (!more) out.scrollIntoView({ behavior: "smooth", block: "start" }); } catch (e) {}
     try {
       var sample = await window.claude.use("sample");
       if (!sample) throw { code: "unavailable" };
-      var prompt = "Eres un nutricionista y cocinero práctico. Responde en español y SOLO con JSON válido, sin texto extra ni markdown.\n\n" +
-        "Alimentos que me gustan y forman parte de mi dieta, por macronutriente:\n" + ingredientsText() +
-        "\n\nNotas y restricciones: " + ($("notes").value.trim() || "ninguna") +
-        "\n\nTarea: " + task() + "\n\nFormato JSON exacto:\n" + SCHEMA;
-      var data = await sample.json(prompt, { cache: false, modelTier: "default" });
-      statusEl.textContent = "";
-      render(data, more);
+      var data = await sample.json(promptText, { cache: false, modelTier: "default" });
+      var dishes = (data && data.dishes || []).filter(function (d) { return d && d.title; });
+      if (!dishes.length) throw { code: "empty" };
+      dishes.forEach(function (d) { d._t = t; });
+      results[v][t] = (more ? listFor(v, t).concat(dishes) : dishes).slice(-36);
+      save();
+      statusEl.textContent = (view === v && ptype() === t) ? "" : "Ya están listas tus ideas de " + TYPE_PLURAL[t] + (v === "home" ? " (En casa)" : "") + ".";
     } catch (e) {
       statusEl.className = "status error";
       statusEl.textContent = e && e.code === "not_granted" ? "Necesito tu permiso para usar Claude desde esta página."
         : e && e.code === "rate_limited" ? "Demasiadas peticiones seguidas. Espera un momento y vuelve a intentarlo."
         : e && e.code === "unavailable" ? "Claude no está disponible en esta vista. Ábrelo desde la app de Claude."
         : "No se pudo generar el resultado. Inténtalo de nuevo.";
-      if (!more) emptyState(); else { var mb = $("b-more"); if (mb) mb.disabled = false; }
     } finally {
       busy = false; refresh();
-      var mb2 = $("b-more"); if (mb2) mb2.disabled = false;
+      if (view === v && ptype() === t) drawResults();
     }
   }
   goBtn.addEventListener("click", function () { run(false); });
-  emptyState();
+  renderPantry(); updateFavCount(); updateCart(); setView(view);
 })();
 </script>
 
