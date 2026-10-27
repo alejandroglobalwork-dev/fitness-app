@@ -175,13 +175,17 @@ ul.ing li { margin: 2px 0; }
 .shopcat span { min-width: 0; overflow-wrap: anywhere; }
 .shopcat em { font-style: normal; color: var(--muted); }
 .shopcat input:checked + span { text-decoration: line-through; opacity: .5; }
+#copyfb2 { margin: -4px 0 14px; font-size: 13px; color: var(--muted); }
+#copyfb2 textarea { width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; font: inherit; background: var(--surface); color: var(--ink); }
+.tsub { font: 700 1.05rem/1.2 var(--font-display); margin: 24px 0 10px; color: var(--muted); }
 #copyfb { margin-top: 12px; font-size: 13px; color: var(--muted); }
 #copyfb textarea { width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; font: inherit; background: var(--surface); color: var(--ink); }
 .sk.shop i { display: block; margin-bottom: 10px; }
-.views { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding: 4px; margin-bottom: 20px; border-radius: 18px; background: var(--surface); box-shadow: var(--shadow); max-width: 460px; }
-.vtab { display: flex; align-items: center; justify-content: center; gap: 6px; min-width: 0; padding: 11px 4px; border: 0; border-radius: 14px; background: transparent; color: var(--muted); font: 700 clamp(12.5px, 3.7vw, 15px)/1.2 var(--font-display); white-space: nowrap; cursor: pointer; }
+.views { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; padding: 4px; margin-bottom: 20px; border-radius: 18px; background: var(--surface); box-shadow: var(--shadow); max-width: 540px; }
+.vtab { position: relative; display: flex; align-items: center; justify-content: center; min-width: 0; padding: 12px 2px; border: 0; border-radius: 14px; background: transparent; color: var(--muted); font: 700 clamp(11px, 3.3vw, 15px)/1.2 var(--font-display); white-space: nowrap; cursor: pointer; }
 .vtab[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
-.vtab .vn { font: 700 11px/1 var(--font-body); padding: 3px 7px; border-radius: 999px; background: color-mix(in srgb, currentColor 20%, transparent); }
+.vtab .vn { position: absolute; top: 1px; right: 2px; min-width: 16px; padding: 2px 5px; border-radius: 999px; background: var(--accent); color: #fff; font: 700 10px/1.2 var(--font-body); text-align: center; }
+.vtab[aria-pressed="true"] .vn { background: #fff; color: var(--accent-deep); }
 .vtab .vn:empty { display: none; }
 .layout.single { grid-template-columns: minmax(0, 1fr); }
 .layout.single .panel { display: none; }
@@ -219,6 +223,7 @@ ul.ing li { margin: 2px 0; }
     <button type="button" class="vtab" data-v="ideas" aria-pressed="true">Ideas</button>
     <button type="button" class="vtab" data-v="home" aria-pressed="false">En casa</button>
     <button type="button" class="vtab" data-v="saved" aria-pressed="false">Guardados <span class="vn" id="favn"></span></button>
+    <button type="button" class="vtab" data-v="picked" aria-pressed="false">Selección <span class="vn" id="pickn"></span></button>
   </nav>
 
   <div class="layout">
@@ -281,7 +286,7 @@ ul.ing li { margin: 2px 0; }
       <div id="out"></div>
       <div class="cart" id="cart" hidden>
         <span id="cartn"></span>
-        <span class="cbtns"><button type="button" class="link" id="b-clear">Vaciar</button><button type="button" id="b-shop">Lista de la compra</button></span>
+        <span class="cbtns"><button type="button" class="link" id="b-view">Ver platos</button><button type="button" class="link" id="b-clear">Vaciar</button><button type="button" id="b-shop">Lista de la compra</button></span>
       </div>
     </section>
   </div>
@@ -363,7 +368,7 @@ window.claude = { use: async function (name) {
     ["ideas", "home"].forEach(function (v) { results[v] = (stored.results && stored.results[v]) || {}; });
     pantry = Array.isArray(stored.pantry) ? stored.pantry : [];
     picked = stored.picked || {}; favs = stored.favs || {};
-    if (["ideas", "home", "saved"].indexOf(stored.view) > -1) view = stored.view;
+    if (["ideas", "home", "saved", "picked"].indexOf(stored.view) > -1) view = stored.view;
   }
 
   function total() { return CATALOG.reduce(function (n, g) { return n + state.selected[g.id].length; }, 0); }
@@ -663,7 +668,7 @@ window.claude = { use: async function (name) {
 
   var registry = {};
   var BOOKMARK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4z"/></svg>';
-  function card(d) {
+  function card(d, open) {
     var k = dkey(d); registry[k] = d;
     var main = (d.mainIngredients || []).map(function (x) { return "<span>" + esc(x) + "</span>"; }).join("");
     var extra = (d.extraIngredients || []).length ? "<p class='buy'><b>Comprar:</b> " + esc(d.extraIngredients.join(", ")) + "</p>" : "";
@@ -675,7 +680,7 @@ window.claude = { use: async function (name) {
       "<div class='meta'><span class='mins'>" + esc(d.minutes) + " min</span>" + (d.technique ? "<span class='tech'>" + esc(d.technique) + "</span>" : "") + "</div><h3>" + esc(d.title) + "</h3><p>" + esc(d.description) + "</p>" +
       (main ? "<div class='tags'>" + main + "</div>" : "") + extra +
       "<button type='button' class='pick' data-k='" + esc(k) + "' aria-pressed='" + on + "'>" + (on ? "✓ En la compra" : "+ A la compra") + "</button>" +
-      (steps || ing ? "<details><summary>Ver receta</summary>" + (ing ? "<p class='lbl'>Ingredientes</p><ul class='ing'>" + ing + "</ul>" : "") +
+      (steps || ing ? "<details" + (open ? " open" : "") + "><summary>Ver receta</summary>" + (ing ? "<p class='lbl'>Ingredientes</p><ul class='ing'>" + ing + "</ul>" : "") +
         (steps ? "<p class='lbl'>Preparación</p><ol class='steps'>" + steps + "</ol>" : "") + "</details>" : "") + "</div></article>";
   }
   function skeleton() {
@@ -687,6 +692,14 @@ window.claude = { use: async function (name) {
       "<path d='M100 76 L100 30 A46 46 0 0 1 140 99 Z' fill='#ffcf5c'/><path d='M100 76 L140 99 A46 46 0 0 1 60 99 Z' fill='#ff9a85'/><path d='M100 76 L60 99 A46 46 0 0 1 100 30 Z' fill='#7fdc98'/><circle cx='100' cy='76' r='10' fill='#fff'/></svg>" +
       "<p>" + msg + "</p></div>";
   }
+  function pickedText() {
+    return Object.keys(picked).map(function (k) {
+      var d = picked[k], lines = ["• " + d.title + " (" + d.minutes + " min" + (d.technique ? " · " + d.technique : "") + ")"];
+      if ((d.ingredients || []).length) lines.push("  Ingredientes: " + d.ingredients.join("; "));
+      (d.steps || []).forEach(function (st, i) { lines.push("  " + (i + 1) + ". " + st); });
+      return lines.join("\n");
+    }).join("\n\n");
+  }
   function drawResults() {
     registry = {};
     var t = ptype();
@@ -695,8 +708,26 @@ window.claude = { use: async function (name) {
       if (!all.length) { emptyState("Aún no has guardado ningún plato. Pulsa el marcador de una tarjeta para tenerlo aquí."); return; }
       out.innerHTML = TYPES.map(function (ty) {
         var list = all.filter(function (d) { return (d._t || "comida") === ty; });
-        return list.length ? "<h2>" + cap(TYPE_PLURAL[ty]) + " <span>· " + list.length + "</span></h2><div class='cards'>" + list.map(card).join("") + "</div>" : "";
+        return list.length ? "<h2>" + cap(TYPE_PLURAL[ty]) + " <span>· " + list.length + "</span></h2><div class='cards'>" + list.map(function (d) { return card(d); }).join("") + "</div>" : "";
       }).join("");
+      return;
+    }
+    if (view === "picked") {
+      var pk = Object.keys(picked).map(function (k) { return picked[k]; });
+      if (!pk.length) { emptyState("Aún no has seleccionado ningún plato. Pulsa <b>+ A la compra</b> en una tarjeta para verlo aquí."); return; }
+      out.innerHTML = "<div class='shead' style='margin-bottom:14px'><h2>Mi selección <span>· " + pk.length + "</span></h2><span class='sbtns'><button type='button' class='link' id='b-copyp'>Copiar platos</button></span></div><div id='copyfb2' role='status'></div>" +
+        TYPES.map(function (ty) {
+          var l = pk.filter(function (d) { return (d._t || "comida") === ty; });
+          return l.length ? "<h3 class='tsub'>" + cap(TYPE_PLURAL[ty]) + "</h3><div class='cards'>" + l.map(function (d) { return card(d, true); }).join("") + "</div>" : "";
+        }).join("");
+      $("b-copyp").addEventListener("click", function () {
+        var txt = pickedText(), fb = $("copyfb2");
+        function fallback() {
+          fb.innerHTML = "<textarea readonly rows='8' id='copyta2' aria-label='Platos para copiar'></textarea>";
+          var ta = $("copyta2"); ta.value = txt; ta.focus(); ta.select();
+        }
+        try { navigator.clipboard.writeText(txt).then(function () { fb.textContent = "Platos copiados."; }, fallback); } catch (e) { fallback(); }
+      });
       return;
     }
     var list = listFor(view, t);
@@ -706,7 +737,7 @@ window.claude = { use: async function (name) {
         : "Aquí aparecerán tus " + TYPE_PLURAL[t] + ". Marca tus alimentos y pulsa <b>Ideas de platos</b>.");
       return;
     }
-    out.innerHTML = "<h2>" + (view === "home" ? "En casa · " + TYPE_PLURAL[t] : "Ideas de " + TYPE_PLURAL[t]) + " <span>· " + list.length + "</span></h2><div class='cards'>" + list.map(card).join("") +
+    out.innerHTML = "<h2>" + (view === "home" ? "En casa · " + TYPE_PLURAL[t] : "Ideas de " + TYPE_PLURAL[t]) + " <span>· " + list.length + "</span></h2><div class='cards'>" + list.map(function (d) { return card(d); }).join("") +
       "</div><button type='button' class='more' id='b-more'>Más variantes</button>";
     $("b-more").addEventListener("click", function () { run(true); });
   }
@@ -717,7 +748,8 @@ window.claude = { use: async function (name) {
     view = v;
     [].forEach.call($("views").querySelectorAll(".vtab"), function (b) { b.setAttribute("aria-pressed", String(b.dataset.v === v)); });
     $("blk-foods").hidden = v !== "ideas"; $("blk-home").hidden = v !== "home";
-    layoutEl.classList.toggle("single", v === "saved");
+    layoutEl.classList.toggle("single", v === "saved" || v === "picked");
+    $("b-view").hidden = v === "picked";
     goBtn.textContent = v === "home" ? "Platos con lo que tengo" : "Ideas de platos";
     statusEl.className = "status"; statusEl.textContent = "";
     refresh(); drawResults(); save();
@@ -764,6 +796,7 @@ window.claude = { use: async function (name) {
   function updateCart() {
     var n = Object.keys(picked).length;
     $("cart").hidden = !n;
+    $("pickn").textContent = n || "";
     $("cartn").textContent = n + (n === 1 ? " plato en la compra" : " platos en la compra");
   }
   function errText(e) {
@@ -783,6 +816,7 @@ window.claude = { use: async function (name) {
       var on = !!picked[k];
       b.setAttribute("aria-pressed", String(on)); b.textContent = on ? "✓ En la compra" : "+ A la compra";
       updateCart();
+      if (view === "picked") drawResults();
     } else {
       if (favs[k]) delete favs[k]; else favs[k] = d;
       var fav = !!favs[k];
@@ -792,6 +826,7 @@ window.claude = { use: async function (name) {
     }
     save();
   });
+  $("b-view").addEventListener("click", function () { setView("picked"); try { window.scrollTo({ top: 0, behavior: "smooth" }); } catch (e) {} });
   $("b-clear").addEventListener("click", function () { picked = {}; shopEl.innerHTML = ""; updateCart(); save(); drawResults(); });
   function shopTextFromDom() {
     return [].map.call(shopEl.querySelectorAll(".shopcat"), function (c) {
@@ -849,7 +884,7 @@ window.claude = { use: async function (name) {
 
   /* ---------- generar platos ---------- */
   async function run(more) {
-    if (view === "saved" || busy) return;
+    if (view === "saved" || view === "picked" || busy) return;
     var v = view, t = ptype(), promptText = buildPrompt(v, t);
     busy = true; refresh();
     var oldMore = $("b-more"); if (oldMore) oldMore.disabled = true;
