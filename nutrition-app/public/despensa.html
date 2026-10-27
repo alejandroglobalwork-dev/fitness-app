@@ -84,6 +84,11 @@ button.link { padding: 4px 2px; background: none; border: 0; color: var(--ink); 
 .add { display: flex; gap: 8px; margin-top: 12px; }
 input[type=text], input[type=number] { width: 100%; padding: 10px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink); font: inherit; }
 .add input { flex: 1 1 auto; min-width: 0; }
+.smart { margin-top: 0; }
+.smart button:disabled { opacity: .55; cursor: progress; }
+.smartfb { margin: 8px 0 12px; font-size: 13px; color: var(--muted); min-height: 1.3em; overflow-wrap: anywhere; }
+.smartfb.error { color: var(--warn); }
+.smartfb b { color: var(--ink); }
 input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .add button { flex: none; padding: 9px 16px; border-radius: 12px; border: 0; background: var(--ink); color: var(--surface); font: 500 14px var(--font-body); cursor: pointer; }
 
@@ -196,7 +201,12 @@ ul.ing li { margin: 2px 0; }
     <section class="panel" aria-label="Tus alimentos y ajustes">
       <div class="block">
         <div class="eyebrow"><span>Mis alimentos</span><span class="count" id="count"></span></div>
-        <p class="help">Abre un grupo y marca los que te gustan. Si falta alguno, añádelo.</p>
+        <p class="help">Abre un grupo y marca los que te gustan. Si falta alguno, escríbelo abajo y Claude lo clasifica por ti.</p>
+        <form class="add smart" id="smart">
+          <input type="text" id="newfood" autocomplete="off" placeholder="Ej. queso cottage" aria-label="Añadir un alimento">
+          <button type="submit" id="b-smart">Añadir</button>
+        </form>
+        <p class="smartfb" id="smartfb" role="status" aria-live="polite"></p>
         <div id="groups"></div>
       </div>
 
@@ -316,7 +326,7 @@ window.claude = { use: async function (name) {
     $("count").textContent = n + (n === 1 ? " marcado" : " marcados");
     CATALOG.forEach(function (g) {
       var el = $("n-" + g.id);
-      if (el) el.textContent = state.selected[g.id].length + " marcados";
+      if (el) el.textContent = state.selected[g.id].length + (state.selected[g.id].length === 1 ? " marcado" : " marcados");
     });
     goBtn.disabled = !n || busy;
     $("note").textContent = n ? "" : "Marca al menos un alimento para empezar.";
@@ -346,9 +356,7 @@ window.claude = { use: async function (name) {
         return "<label class='chip' for='" + id + "'><input type='checkbox' id='" + id + "' data-g='" + g.id + "' value='" + esc(name) + "'" +
           (state.selected[g.id].indexOf(name) > -1 ? " checked" : "") + "><span>" + esc(name) + "</span></label>";
       }).join("");
-      drawer = "<div class='drawer' id='drawer' style='--gc:" + g.color + "'>" + tools + "<div class='chips'>" + chips + "</div>" +
-        (state.editing ? "" : "<form class='add' data-g='" + g.id + "'><input type='text' id='add-" + g.id + "' placeholder='Añadir a " +
-        esc(g.title.toLowerCase()) + "' aria-label='Añadir alimento a " + esc(g.title) + "'><button type='submit'>Añadir</button></form>") + "</div>";
+      drawer = "<div class='drawer' id='drawer' style='--gc:" + g.color + "'>" + tools + "<div class='chips'>" + chips + "</div></div>";
     }
     groupsEl.innerHTML = tabs + drawer;
     refresh();
@@ -394,16 +402,55 @@ window.claude = { use: async function (name) {
     if (!t.checked && i > -1) arr.splice(i, 1);
     refresh(); save();
   });
-  groupsEl.addEventListener("submit", function (e) {
+  /* Añadir un alimento: Claude decide el grupo. */
+  var smartForm = $("smart"), smartIn = $("newfood"), smartBtn = $("b-smart"), smartFb = $("smartfb");
+  function foodKey(x) { return String(x).trim().toLowerCase(); }
+  function findFood(name) {
+    var k = foodKey(name);
+    for (var i = 0; i < CATALOG.length; i++) {
+      var all = CATALOG[i].items.concat(state.custom[CATALOG[i].id]);
+      for (var j = 0; j < all.length; j++) if (foodKey(all[j]) === k) return { g: CATALOG[i].id, name: all[j] };
+    }
+    return null;
+  }
+  smartForm.addEventListener("submit", async function (e) {
     e.preventDefault();
-    var f = e.target, g = f.dataset.g, input = f.querySelector("input"), name = input.value.trim();
-    if (!name) return;
-    var c = cat(g), known = c.items.concat(state.custom[g]), k = known.map(function (x) { return x.toLowerCase(); }).indexOf(name.toLowerCase());
-    if (k < 0) { state.custom[g].push(name); } else { name = known[k]; }
-    var hi = state.hidden[g].indexOf(name);
-    if (hi > -1) state.hidden[g].splice(hi, 1);
-    if (state.selected[g].indexOf(name) < 0) state.selected[g].push(name);
-    save(); drawGroups(); $("add-" + g).focus();
+    var names = smartIn.value.split(/[,\n]/).map(function (x) { return x.trim(); }).filter(Boolean).slice(0, 10);
+    if (!names.length) return;
+    smartBtn.disabled = true; smartFb.className = "smartfb"; smartFb.textContent = "Claude está clasificando…";
+    try {
+      var sample = await window.claude.use("sample");
+      if (!sample) throw { code: "unavailable" };
+      var prompt = "Clasifica cada alimento en el macronutriente que más aporta. Grupos: carbs (carbohidratos: cereales, pan, pasta, arroz, patata, legumbres, fruta, verdura), prot (proteínas: carne, pescado, huevos, lácteos ricos en proteína como el queso cottage o el yogur griego, soja, proteína en polvo) y fat (grasas: aceites, frutos secos, semillas, aguacate, quesos grasos, chocolate negro). " +
+        "Responde en español y SOLO con JSON válido, sin texto extra ni markdown. name = el alimento con la primera letra en mayúscula y bien escrito; why = máximo 8 palabras explicando la elección.\n\nAlimentos:\n" + names.map(function (n) { return "- " + n; }).join("\n") +
+        "\n\nFormato JSON exacto:\n{\"items\":[{\"name\":\"Queso cottage\",\"group\":\"prot\",\"why\":\"mucha proteína y poca grasa\"}]}";
+      var data = await sample.json(prompt, { cache: false, modelTier: "quick" });
+      var done = [], last = null;
+      (data && data.items || []).forEach(function (it) {
+        var c = it && cat(it.group), name = it && String(it.name || "").trim();
+        if (!c || !name) return;
+        var known = findFood(name), g = c.id;
+        if (known) { g = known.g; name = known.name; } else { state.custom[g].push(name); }
+        var hi = state.hidden[g].indexOf(name);
+        if (hi > -1) state.hidden[g].splice(hi, 1);
+        if (state.selected[g].indexOf(name) < 0) state.selected[g].push(name);
+        last = g;
+        done.push("<b>" + esc(name) + "</b> → " + esc(cat(g).title) + (known ? " (ya estaba)" : it.why ? " (" + esc(it.why) + ")" : ""));
+      });
+      if (!done.length) throw { code: "empty" };
+      state.open = last; state.editing = false;
+      save(); drawGroups();
+      smartFb.innerHTML = done.join("<br>") + " · Marcado.";
+      smartIn.value = "";
+    } catch (err) {
+      smartFb.className = "smartfb error";
+      smartFb.textContent = err && err.code === "not_granted" ? "Necesito tu permiso para usar Claude desde esta página."
+        : err && err.code === "rate_limited" ? "Demasiadas peticiones seguidas. Espera un momento."
+        : err && err.code === "unavailable" ? "Claude no está disponible en esta vista. Ábrelo desde la app de Claude."
+        : "No pude clasificarlo. Inténtalo de nuevo.";
+    } finally {
+      smartBtn.disabled = false;
+    }
   });
   ["people", "notes", "onlyhave"].forEach(function (id) { $(id).addEventListener("input", save); });
   $("types").addEventListener("change", function () { lastTitles = []; save(); });
