@@ -68,6 +68,7 @@ h1 { font: 700 clamp(1.7rem, 5.4vw, 2.5rem)/1.05 var(--font-display); letter-spa
 .dtools { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 6px 12px; margin-bottom: 10px; }
 .dtools .hint { font-size: 13px; color: var(--muted); min-width: 0; flex: 1 1 170px; }
 .dbtns { display: flex; gap: 12px; }
+button.link:disabled { opacity: .5; cursor: progress; }
 button.link { padding: 4px 2px; background: none; border: 0; color: var(--ink); font: 700 14px var(--font-body); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -201,7 +202,7 @@ ul.ing li { margin: 2px 0; }
     <section class="panel" aria-label="Tus alimentos y ajustes">
       <div class="block">
         <div class="eyebrow"><span>Mis alimentos</span><span class="count" id="count"></span></div>
-        <p class="help">Abre un grupo y marca los que te gustan. Si falta alguno, escríbelo abajo y Claude lo clasifica por ti.</p>
+        <p class="help">Abre un grupo y marca los que te gustan. Si falta alguno, escríbelo abajo y Claude lo clasifica por ti. Con «Nuevas ideas» cambias los que no has marcado.</p>
         <form class="add smart" id="smart">
           <input type="text" id="newfood" autocomplete="off" placeholder="Ej. queso cottage" aria-label="Añadir un alimento">
           <button type="submit" id="b-smart">Añadir</button>
@@ -282,7 +283,7 @@ window.claude = { use: async function (name) {
   var TYPE_PLURAL = { desayuno: "desayunos", comida: "comidas", cena: "cenas", postre: "postres" };
   var $ = function (id) { return document.getElementById(id); };
   var groupsEl = $("groups"), out = $("out"), statusEl = $("status"), goBtn = $("b-dishes");
-  var state = { selected: {}, custom: {}, hidden: {}, open: "carbs", editing: false };
+  var state = { selected: {}, custom: {}, hidden: {}, open: "carbs", editing: false, refreshing: null, seen: {} };
   var lastTitles = [], busy = false;
 
   function esc(s) {
@@ -301,18 +302,19 @@ window.claude = { use: async function (name) {
   function save() {
     try {
       localStorage.setItem(KEY, JSON.stringify({
-        selected: state.selected, custom: state.custom, hidden: state.hidden,
+        selected: state.selected, custom: state.custom, hidden: state.hidden, seen: state.seen,
         people: $("people").value, notes: $("notes").value, ptype: ptype(), level: level(), onlyhave: $("onlyhave").checked
       }));
     } catch (e) {}
   }
-  CATALOG.forEach(function (g) { state.selected[g.id] = []; state.custom[g.id] = []; state.hidden[g.id] = []; });
+  CATALOG.forEach(function (g) { state.selected[g.id] = []; state.custom[g.id] = []; state.hidden[g.id] = []; state.seen[g.id] = []; });
   var saved = load();
   if (saved) {
     CATALOG.forEach(function (g) {
       state.selected[g.id] = (saved.selected && saved.selected[g.id]) || [];
       state.custom[g.id] = (saved.custom && saved.custom[g.id]) || [];
       state.hidden[g.id] = (saved.hidden && saved.hidden[g.id]) || [];
+      state.seen[g.id] = (saved.seen && saved.seen[g.id]) || [];
     });
     $("people").value = saved.people || 1; $("notes").value = saved.notes || "";
     if (saved.ptype && $("t-" + saved.ptype)) $("t-" + saved.ptype).checked = true;
@@ -345,7 +347,7 @@ window.claude = { use: async function (name) {
     if (g) {
       var nh = state.hidden[g.id].length;
       var tools = "<div class='dtools'><span class='hint'>" + (state.editing ? "Toca ✕ para quitar un alimento de la lista." : "Mantén pulsado un alimento para quitarlo.") +
-        "</span><span class='dbtns'>" + (nh && state.editing ? "<button type='button' class='link' data-act='restore'>Restaurar (" + nh + ")</button>" : "") +
+        "</span><span class='dbtns'>" + (state.editing ? "" : "<button type='button' class='link' data-act='refresh' aria-label='Nuevas ideas: cambia los alimentos sin marcar'" + (state.refreshing ? " disabled" : "") + ">" + (state.refreshing === g.id ? "Buscando…" : "↻ Nuevas ideas") + "</button>") + (nh && state.editing ? "<button type='button' class='link' data-act='restore'>Restaurar (" + nh + ")</button>" : "") +
         "<button type='button' class='link' data-act='edit'>" + (state.editing ? "Listo" : "Editar") + "</button></span></div>";
       var chips = visible(g).map(function (name, i) {
         if (state.editing) {
@@ -369,6 +371,7 @@ window.claude = { use: async function (name) {
     if (t) { state.open = state.open === t.dataset.t ? "" : t.dataset.t; state.editing = false; drawGroups(); return; }
     var act = e.target.closest("[data-act]");
     if (act) {
+      if (act.dataset.act === "refresh") { refreshGroup(state.open); return; }
       if (act.dataset.act === "edit") state.editing = !state.editing;
       if (act.dataset.act === "restore") state.hidden[state.open] = [];
       save(); drawGroups(); return;
@@ -402,6 +405,51 @@ window.claude = { use: async function (name) {
     if (!t.checked && i > -1) arr.splice(i, 1);
     refresh(); save();
   });
+  /* Nuevas ideas: sustituye los alimentos sin marcar de un grupo por sugerencias nuevas. */
+  var GROUP_HINT = {
+    carbs: "carbohidratos (cereales, pan, pasta, tubérculos, legumbres, fruta y verdura)",
+    prot: "proteínas (carnes, pescados, huevos, lácteos ricos en proteína, soja y derivados)",
+    fat: "grasas saludables (aceites, frutos secos, semillas, aguacate, quesos grasos, chocolate negro)"
+  };
+  async function refreshGroup(gid) {
+    if (state.refreshing) return;
+    var g = cat(gid), sFb = $("smartfb");
+    state.refreshing = gid; drawGroups();
+    sFb.className = "smartfb"; sFb.textContent = "Buscando ideas nuevas de " + g.title.toLowerCase() + "…";
+    try {
+      var sample = await window.claude.use("sample");
+      if (!sample) throw { code: "unavailable" };
+      var keep = state.selected[gid].slice();
+      var exclude = visible(g).concat(state.hidden[gid], state.seen[gid]);
+      var prompt = "Propón 12 alimentos comunes, variados y fáciles de encontrar en un supermercado español del grupo " + GROUP_HINT[gid] + ". " +
+        "No repitas ni propongas variantes de estos: " + exclude.join(", ") + ". " +
+        "Notas del usuario (respétalas): " + ($("notes").value.trim() || "ninguna") + ". Alimentos que ya le gustan, para que encajen: " + (CATALOG.reduce(function (a, c) { return a.concat(state.selected[c.id]); }, []).join(", ") || "ninguno") + ". " +
+        "Responde en español y SOLO con JSON válido, sin texto extra ni markdown, con cada alimento con la primera letra en mayúscula.\n\nFormato JSON exacto:\n{\"foods\":[\"Alimento\"]}";
+      var data = await sample.json(prompt, { cache: false, modelTier: "quick" });
+      var seenKeys = state.seen[gid].map(foodKey), fresh = [];
+      (data && data.foods || []).forEach(function (n) {
+        n = String(n || "").trim();
+        var k = foodKey(n);
+        if (!n || findFood(n) || seenKeys.indexOf(k) > -1 || fresh.some(function (f) { return foodKey(f) === k; })) return;
+        fresh.push(n);
+      });
+      fresh = fresh.slice(0, 14);
+      if (fresh.length < 3) throw { code: "empty" };
+      g.items.forEach(function (x) { if (keep.indexOf(x) < 0 && state.hidden[gid].indexOf(x) < 0) state.hidden[gid].push(x); });
+      state.custom[gid] = state.custom[gid].filter(function (x) { return keep.indexOf(x) > -1 || seenKeys.indexOf(foodKey(x)) < 0; }).concat(fresh);
+      state.seen[gid] = state.seen[gid].concat(fresh).slice(-80);
+      sFb.textContent = fresh.length + " ideas nuevas en " + g.title + ". Tus marcados se mantienen.";
+    } catch (err) {
+      sFb.className = "smartfb error";
+      sFb.textContent = err && err.code === "not_granted" ? "Necesito tu permiso para usar Claude desde esta página."
+        : err && err.code === "rate_limited" ? "Demasiadas peticiones seguidas. Espera un momento."
+        : err && err.code === "unavailable" ? "Claude no está disponible en esta vista. Ábrelo desde la app de Claude."
+        : "No salieron ideas nuevas. Inténtalo de nuevo.";
+    } finally {
+      state.refreshing = null; save(); drawGroups();
+    }
+  }
+
   /* Añadir un alimento: Claude decide el grupo. */
   var smartForm = $("smart"), smartIn = $("newfood"), smartBtn = $("b-smart"), smartFb = $("smartfb");
   function foodKey(x) { return String(x).trim().toLowerCase(); }
