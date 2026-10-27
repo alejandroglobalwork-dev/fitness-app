@@ -198,6 +198,7 @@ ul.ing li { margin: 2px 0; }
 .pchip { display: inline-flex; align-items: center; gap: 4px; max-width: 100%; padding: 3px 3px 3px 13px; border-radius: 999px; background: color-mix(in srgb, var(--accent) 14%, var(--surface)); font-size: 14px; line-height: 1.3; }
 .pchip > span { min-width: 0; overflow-wrap: anywhere; }
 .pdel { flex: none; width: 26px; height: 26px; padding: 0; border: 0; border-radius: 50%; background: var(--surface); color: var(--ink); font: 700 12px/1 var(--font-body); cursor: pointer; }
+.pactions[hidden] { display: none; }
 .pactions { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 12px; }
 .sk .art, .sk i { background: linear-gradient(100deg, var(--line) 30%, #e6f3f0 50%, var(--line) 70%); background-size: 200% 100%; animation: sh 1.3s linear infinite; }
 .sk i { display: block; height: 12px; border-radius: 6px; }
@@ -229,26 +230,15 @@ ul.ing li { margin: 2px 0; }
   <div class="layout">
     <section class="panel" aria-label="Tus alimentos y ajustes">
       <div class="block" id="blk-foods">
-        <div class="eyebrow"><span>Mis alimentos</span><span class="count" id="count"></span></div>
-        <p class="help">Abre un grupo y marca los que te gustan. Si falta alguno, escríbelo abajo y Claude lo clasifica por ti. Con «Nuevas ideas» cambias los que no has marcado.</p>
+        <div class="eyebrow"><span id="ftitle">Mis alimentos</span><span class="count" id="count"></span></div>
+        <p class="help" id="fhelp">Abre un grupo y marca los que te gustan. Si falta alguno, escríbelo abajo y Claude lo clasifica por ti. Con «Nuevas ideas» cambias los que no has marcado.</p>
+        <div class="pactions" id="fimport" hidden><button type="button" class="link" id="p-import">Traer mis alimentos marcados</button><button type="button" class="link" id="p-clear">Desmarcar todos</button></div>
         <form class="add smart" id="smart">
           <input type="text" id="newfood" autocomplete="off" placeholder="Ej. queso cottage" aria-label="Añadir un alimento">
           <button type="submit" id="b-smart">Añadir</button>
         </form>
         <p class="smartfb" id="smartfb" role="status" aria-live="polite"></p>
         <div id="groups"></div>
-      </div>
-
-      <div class="block" id="blk-home" hidden>
-        <div class="eyebrow"><span>Lo que tengo en casa</span><span class="count" id="pcount"></span></div>
-        <p class="help">Apunta lo que ya tienes comprado y Claude te propone platos con eso.</p>
-        <form class="add smart" id="pform">
-          <input type="text" id="pin" autocomplete="off" placeholder="Ej. huevos, arroz, calabacín" aria-label="Añadir un alimento que tengo en casa">
-          <button type="submit">Añadir</button>
-        </form>
-        <div class="chips pchips" id="pchips"></div>
-        <div class="pactions"><button type="button" class="link" id="p-import">Traer mis alimentos marcados</button><button type="button" class="link" id="p-clear">Vaciar</button></div>
-        <p class="smartfb" id="pfb" role="status" aria-live="polite"></p>
       </div>
 
       <div class="block">
@@ -323,9 +313,9 @@ window.claude = { use: async function (name) {
   var TYPE_PLURAL = { desayuno: "desayunos", comida: "comidas", cena: "cenas", postre: "postres" };
   var $ = function (id) { return document.getElementById(id); };
   var groupsEl = $("groups"), out = $("out"), statusEl = $("status"), goBtn = $("b-dishes");
-  var state = { selected: {}, custom: {}, hidden: {}, open: "carbs", editing: false, refreshing: null, seen: {} };
+  var state = { selected: {}, custom: {}, hidden: {}, open: "carbs", editing: false, refreshing: null, seen: {}, have: {} };
   var busy = false, view = "ideas";
-  var results = { ideas: {}, home: {} }, pantry = [], picked = {}, favs = {};
+  var results = { ideas: {}, home: {} }, picked = {}, favs = {};
 
   function esc(s) {
     return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
@@ -343,13 +333,13 @@ window.claude = { use: async function (name) {
   function save() {
     try {
       localStorage.setItem(KEY, JSON.stringify({
-        selected: state.selected, custom: state.custom, hidden: state.hidden, seen: state.seen,
+        selected: state.selected, custom: state.custom, hidden: state.hidden, seen: state.seen, have: state.have,
         people: $("people").value, notes: $("notes").value, ptype: ptype(), level: level(), onlyhave: $("onlyhave").checked,
-        results: results, pantry: pantry, picked: picked, favs: favs, view: view
+        results: results, picked: picked, favs: favs, view: view
       }));
     } catch (e) {}
   }
-  CATALOG.forEach(function (g) { state.selected[g.id] = []; state.custom[g.id] = []; state.hidden[g.id] = []; state.seen[g.id] = []; });
+  CATALOG.forEach(function (g) { state.selected[g.id] = []; state.custom[g.id] = []; state.hidden[g.id] = []; state.seen[g.id] = []; state.have[g.id] = []; });
   var stored = load();
   if (stored) {
     CATALOG.forEach(function (g) {
@@ -357,6 +347,7 @@ window.claude = { use: async function (name) {
       state.custom[g.id] = (stored.custom && stored.custom[g.id]) || [];
       state.hidden[g.id] = (stored.hidden && stored.hidden[g.id]) || [];
       state.seen[g.id] = (stored.seen && stored.seen[g.id]) || [];
+      state.have[g.id] = (stored.have && stored.have[g.id]) || [];
     });
     $("people").value = stored.people || 1; $("notes").value = stored.notes || "";
     if (stored.ptype && $("t-" + stored.ptype)) $("t-" + stored.ptype).checked = true;
@@ -366,23 +357,23 @@ window.claude = { use: async function (name) {
 
   if (stored) {
     ["ideas", "home"].forEach(function (v) { results[v] = (stored.results && stored.results[v]) || {}; });
-    pantry = Array.isArray(stored.pantry) ? stored.pantry : [];
+    if (Array.isArray(stored.pantry) && !stored.have) stored.pantry.forEach(function (n) { var f = findFood(n); if (f && state.have[f.g].indexOf(f.name) < 0) state.have[f.g].push(f.name); });
     picked = stored.picked || {}; favs = stored.favs || {};
     if (["ideas", "home", "saved", "picked"].indexOf(stored.view) > -1) view = stored.view;
   }
 
-  function total() { return CATALOG.reduce(function (n, g) { return n + state.selected[g.id].length; }, 0); }
+  function pool() { return view === "home" ? state.have : state.selected; }
+  function total() { return CATALOG.reduce(function (n, g) { return n + pool()[g.id].length; }, 0); }
+  function label(n) { return n + (view === "home" ? " en casa" : n === 1 ? " marcado" : " marcados"); }
   function refresh() {
     var n = total();
-    $("count").textContent = n + (n === 1 ? " marcado" : " marcados");
+    $("count").textContent = label(n);
     CATALOG.forEach(function (g) {
       var el = $("n-" + g.id);
-      if (el) el.textContent = state.selected[g.id].length + (state.selected[g.id].length === 1 ? " marcado" : " marcados");
+      if (el) el.textContent = label(pool()[g.id].length);
     });
-    $("pcount").textContent = pantry.length + (pantry.length === 1 ? " alimento" : " alimentos");
-    var need = view === "home" ? pantry.length : n;
-    goBtn.disabled = !need || busy;
-    $("note").textContent = need ? "" : (view === "home" ? "Añade al menos un alimento que tengas en casa." : "Marca al menos un alimento para empezar.");
+    goBtn.disabled = !n || busy;
+    $("note").textContent = n ? "" : (view === "home" ? "Marca al menos un alimento que tengas en casa." : "Marca al menos un alimento para empezar.");
   }
   function cat(id) { return CATALOG.filter(function (c) { return c.id === id; })[0]; }
   function visible(g) {
@@ -407,7 +398,7 @@ window.claude = { use: async function (name) {
         }
         var id = "f-" + g.id + "-" + i;
         return "<label class='chip' for='" + id + "'><input type='checkbox' id='" + id + "' data-g='" + g.id + "' value='" + esc(name) + "'" +
-          (state.selected[g.id].indexOf(name) > -1 ? " checked" : "") + "><span>" + esc(name) + "</span></label>";
+          (pool()[g.id].indexOf(name) > -1 ? " checked" : "") + "><span>" + esc(name) + "</span></label>";
       }).join("");
       drawer = "<div class='drawer' id='drawer' style='--gc:" + g.color + "'>" + tools + "<div class='chips'>" + chips + "</div></div>";
     }
@@ -431,8 +422,7 @@ window.claude = { use: async function (name) {
     if (del) {
       var g = state.open, name = del.dataset.name, ci = state.custom[g].indexOf(name);
       if (ci > -1) state.custom[g].splice(ci, 1); else if (state.hidden[g].indexOf(name) < 0) state.hidden[g].push(name);
-      var si = state.selected[g].indexOf(name);
-      if (si > -1) state.selected[g].splice(si, 1);
+      [state.selected, state.have].forEach(function (pl) { var si = pl[g].indexOf(name); if (si > -1) pl[g].splice(si, 1); });
       save(); drawGroups();
     }
   }, true);
@@ -451,7 +441,7 @@ window.claude = { use: async function (name) {
   groupsEl.addEventListener("change", function (e) {
     var t = e.target;
     if (!t.matches("input[type=checkbox]")) return;
-    var arr = state.selected[t.dataset.g], i = arr.indexOf(t.value);
+    var arr = pool()[t.dataset.g], i = arr.indexOf(t.value);
     if (t.checked && i < 0) arr.push(t.value);
     if (!t.checked && i > -1) arr.splice(i, 1);
     refresh(); save();
@@ -470,7 +460,7 @@ window.claude = { use: async function (name) {
     try {
       var sample = await window.claude.use("sample");
       if (!sample) throw { code: "unavailable" };
-      var keep = state.selected[gid].slice();
+      var keep = state.selected[gid].concat(state.have[gid]);
       var exclude = visible(g).concat(state.hidden[gid], state.seen[gid]);
       var prompt = "Propón 12 alimentos comunes, variados y fáciles de encontrar en un supermercado español del grupo " + GROUP_HINT[gid] + ". " +
         "No repitas ni propongas variantes de estos: " + exclude.join(", ") + ". " +
@@ -532,7 +522,7 @@ window.claude = { use: async function (name) {
         if (known) { g = known.g; name = known.name; } else { state.custom[g].push(name); }
         var hi = state.hidden[g].indexOf(name);
         if (hi > -1) state.hidden[g].splice(hi, 1);
-        if (state.selected[g].indexOf(name) < 0) state.selected[g].push(name);
+        if (pool()[g].indexOf(name) < 0) pool()[g].push(name);
         last = g;
         done.push("<b>" + esc(name) + "</b> → " + esc(cat(g).title) + (known ? " (ya estaba)" : it.why ? " (" + esc(it.why) + ")" : ""));
       });
@@ -647,7 +637,9 @@ window.claude = { use: async function (name) {
     }).join("\n\n");
   }
   function foodsBlock(v) {
-    if (v === "home") return "Alimentos que tengo EN CASA, ya comprados:\n" + pantry.map(function (i) { return "- " + i; }).join("\n");
+    if (v === "home") return "Alimentos que tengo EN CASA, ya comprados:\n" + CATALOG.filter(function (g) { return state.have[g.id].length; }).map(function (g) {
+      return g.title + ":\n" + state.have[g.id].map(function (i) { return "- " + i; }).join("\n");
+    }).join("\n\n");
     return "Alimentos que me gustan y forman parte de mi dieta, por macronutriente:\n" + ingredientsText();
   }
   function task(v, t) {
@@ -733,7 +725,7 @@ window.claude = { use: async function (name) {
     var list = listFor(view, t);
     if (!list.length) {
       emptyState(view === "home"
-        ? "Aquí aparecerán tus " + TYPE_PLURAL[t] + " con lo que tienes en casa. Apunta tus alimentos y pulsa <b>Platos con lo que tengo</b>."
+        ? "Aquí aparecerán tus " + TYPE_PLURAL[t] + " con lo que tienes en casa. Marca lo que tienes en casa y pulsa <b>Platos con lo que tengo</b>."
         : "Aquí aparecerán tus " + TYPE_PLURAL[t] + ". Marca tus alimentos y pulsa <b>Ideas de platos</b>.");
       return;
     }
@@ -747,7 +739,13 @@ window.claude = { use: async function (name) {
   function setView(v) {
     view = v;
     [].forEach.call($("views").querySelectorAll(".vtab"), function (b) { b.setAttribute("aria-pressed", String(b.dataset.v === v)); });
-    $("blk-foods").hidden = v !== "ideas"; $("blk-home").hidden = v !== "home";
+    $("blk-foods").hidden = v !== "ideas" && v !== "home";
+    $("fimport").hidden = v !== "home";
+    $("ftitle").textContent = v === "home" ? "Lo que tengo en casa" : "Mis alimentos";
+    $("fhelp").textContent = v === "home"
+      ? "Marca los alimentos que ya tienes comprados. Si falta alguno, escríbelo abajo y Claude lo clasifica. Con ellos te propongo platos."
+      : "Abre un grupo y marca los que te gustan. Si falta alguno, escríbelo abajo y Claude lo clasifica por ti. Con «Nuevas ideas» cambias los que no has marcado.";
+    state.editing = false; drawGroups();
     layoutEl.classList.toggle("single", v === "saved" || v === "picked");
     $("b-view").hidden = v === "picked";
     goBtn.textContent = v === "home" ? "Platos con lo que tengo" : "Ideas de platos";
@@ -757,38 +755,19 @@ window.claude = { use: async function (name) {
   $("views").addEventListener("click", function (e) { var b = e.target.closest(".vtab"); if (b) setView(b.dataset.v); });
   function updateFavCount() { $("favn").textContent = Object.keys(favs).length || ""; }
 
-  /* lo que tengo en casa */
-  function renderPantry() {
-    $("pchips").innerHTML = pantry.map(function (n, i) {
-      return "<span class='pchip'><span>" + esc(n) + "</span><button type='button' class='pdel' data-i='" + i + "' aria-label='Quitar " + esc(n) + "'>✕</button></span>";
-    }).join("");
-    refresh();
-  }
-  function addPantry(names) {
-    var added = 0;
-    names.forEach(function (n) {
-      n = String(n).trim(); if (!n) return;
-      n = cap(n);
-      if (pantry.some(function (p) { return foodKey(p) === foodKey(n); })) return;
-      pantry.push(n); added++;
-    });
-    if (added) { save(); renderPantry(); }
-    return added;
-  }
-  $("pform").addEventListener("submit", function (e) {
-    e.preventDefault();
-    addPantry($("pin").value.split(/[,\n]/)); $("pin").value = ""; $("pin").focus();
-  });
-  $("pchips").addEventListener("click", function (e) {
-    var b = e.target.closest(".pdel"); if (!b) return;
-    pantry.splice(+b.dataset.i, 1); save(); renderPantry();
-  });
+  /* lo que tengo en casa: misma lista de alimentos, con su propia selección */
   $("p-import").addEventListener("click", function () {
-    var all = []; CATALOG.forEach(function (c) { all = all.concat(state.selected[c.id]); });
-    var n = addPantry(all);
-    $("pfb").textContent = n ? n + (n === 1 ? " alimento traído" : " alimentos traídos") + " desde tus marcados." : "No hay alimentos marcados nuevos que traer.";
+    var n = 0;
+    CATALOG.forEach(function (c) { state.selected[c.id].forEach(function (x) { if (state.have[c.id].indexOf(x) < 0) { state.have[c.id].push(x); n++; } }); });
+    save(); drawGroups();
+    $("smartfb").className = "smartfb";
+    $("smartfb").textContent = n ? n + (n === 1 ? " alimento traído" : " alimentos traídos") + " desde tus marcados." : "No hay alimentos marcados nuevos que traer.";
   });
-  $("p-clear").addEventListener("click", function () { pantry = []; save(); renderPantry(); $("pfb").textContent = ""; });
+  $("p-clear").addEventListener("click", function () {
+    CATALOG.forEach(function (c) { state.have[c.id] = []; });
+    save(); drawGroups();
+    $("smartfb").className = "smartfb"; $("smartfb").textContent = "";
+  });
 
   /* ---------- lista de la compra ---------- */
   var shopEl = $("shop"), shopBtn = $("b-shop");
@@ -913,7 +892,7 @@ window.claude = { use: async function (name) {
     }
   }
   goBtn.addEventListener("click", function () { run(false); });
-  renderPantry(); updateFavCount(); updateCart(); setView(view);
+  updateFavCount(); updateCart(); setView(view);
 })();
 </script>
 
